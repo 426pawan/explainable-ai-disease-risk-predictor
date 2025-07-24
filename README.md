@@ -65,24 +65,16 @@ We used SHAP to understand which features contributed to the prediction. On the 
 ## 📁 Project Structure
 
 Explainable AI Disease Risk Predictor/
-
-├── app.py # Flask application
-
-├── shap_utils.py # SHAP plot generator utility
-
+├── app.py
+├── shap_utils.py
 ├── model/
-
-│ ├── best_model.pkl # Trained Random Forest model
-
-│ └── scaler.pkl # Fitted StandardScaler
-
+│ ├── best_model.pkl
+│ └── scaler.pkl
 ├── notebook/
-
-│ └── model_development.ipynb # Jupyter notebook for training
-
+│ └── model_development.ipynb
 ├── templates/
-│ ├── index.html # Input form page
-│ └── result.html # Prediction + SHAP plot page
+│ ├── index.html
+│ └── result.html
 ├── static/
 │ ├── css/
 │ │ └── style.css
