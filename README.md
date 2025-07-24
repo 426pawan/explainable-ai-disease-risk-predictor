@@ -66,7 +66,9 @@ We used SHAP to understand which features contributed to the prediction. On the 
 
 Explainable AI Disease Risk Predictor/
 ├── app.py
+|
 ├── shap_utils.py
+|
 ├── model/
 │ ├── best_model.pkl
 │ └── scaler.pkl
