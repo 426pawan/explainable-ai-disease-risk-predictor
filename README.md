@@ -70,22 +70,31 @@ Explainable AI Disease Risk Predictor/
 ├── shap_utils.py
 
 ├── model/
+
 │ ├── best_model.pkl
+
 │ └── scaler.pkl
 
 ├── notebook/
+
 │ └── model_development.ipynb
 
 ├── templates/
+
 │ ├── index.html
+
 │ └── result.html
 
 ├── static/
+
 │ ├── css/
+
 │ │ └── style.css
+
 │ └── images/
 
 ├── requirements.txt
+
 └── README.md
 
 
