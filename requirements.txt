@@ -1,5 +1,9 @@
-Flask
 gunicorn
 numpy
 pandas
 scikit-learn
+openai
+python-dotenv
+shap
+matplotlib
+# make sure at the time of deployment in environment variable Key: PYTHON_VERSION and Value: 3.10.13

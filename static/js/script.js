@@ -1,13 +1,29 @@
-document.addEventListener("DOMContentLoaded", function () {
-    const form = document.querySelector("form");
-    const button = form.querySelector("button");
+async function sendMessage() {
+  const userInput = document.getElementById("user-input");
+  const chatLog = document.getElementById("chat-log");
+  const question = userInput.value.trim();
+  if (!question) return;
 
-    form.addEventListener("submit", function () {
-        button.disabled = true;
-        button.innerText = "Checking...";
+  const userMessage = document.createElement("p");
+  userMessage.innerHTML = `<span class="chat-user">You:</span> ${question}`;
+  chatLog.appendChild(userMessage);
+  userInput.value = "";
+
+  try {
+    const res = await fetch("/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message: question }),
     });
 
-    form.addEventListener("submit", function () {
-        window.scrollTo({ top: 0, behavior: "smooth" });
-    });
-});
+    const data = await res.json();
+    const assistantMessage = document.createElement("p");
+    assistantMessage.innerHTML = `<span class="chat-assistant">Assistant:</span> ${data.reply}`;
+    chatLog.appendChild(assistantMessage);
+    chatLog.scrollTop = chatLog.scrollHeight;
+  } catch (err) {
+    const errorMsg = document.createElement("p");
+    errorMsg.innerHTML = `<span class="chat-assistant">Assistant:</span>Error: ${err.message}`;
+    chatLog.appendChild(errorMsg);
+  }
+}

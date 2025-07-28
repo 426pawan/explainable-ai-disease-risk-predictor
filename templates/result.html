@@ -5,75 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Prediction Result - Heart Risk Checker</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-  <style>
-    body {
-      background-color: #eef2f7;
-      font-family: 'Segoe UI', sans-serif;
-    }
-
-    .result-box {
-      background-color: #fff;
-      padding: 2rem;
-      border-radius: 1rem;
-      box-shadow: 0 0 15px rgba(0,0,0,0.1);
-      max-width: 700px;
-      margin: 2rem auto;
-      text-align: center;
-    }
-
-    .result-box h1 {
-      font-size: 2rem;
-      color: #6a1b9a;
-      margin-bottom: 1.2rem;
-    }
-
-    .result-box p {
-      font-size: 1.1rem;
-      margin-bottom: 0.8rem;
-    }
-
-    .healthy {
-      color: #2e7d32;
-    }
-
-    .unhealthy {
-      color: #c62828;
-    }
-
-    .btn {
-      display: inline-block;
-      margin-top: 1.2rem;
-      padding: 0.75rem 1.5rem;
-      background-color: #6a1b9a;
-      color: #fff;
-      border: none;
-      border-radius: 0.5rem;
-      font-size: 1rem;
-      cursor: pointer;
-      text-decoration: none;
-      transition: background-color 0.3s ease;
-    }
-
-    .btn:hover {
-      background-color: #4a148c;
-    }
-
-    ul {
-      list-style-type: disc;
-      text-align: left;
-      padding-left: 2rem;
-      margin: 1rem auto;
-      max-width: 500px;
-    }
-
-    ul li {
-      margin-bottom: 0.6rem;
-    }
-
-    .external-link {
-      background-color: #3949ab;
-    }
-  </style>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/resStyle.css') }}">
 </head>
 <body>
 
@@ -88,39 +20,70 @@
       {% endif %}
     </p>
 
-    <p><strong>Prediction Probabilities:</strong> {{ proba }}</p>
+    <p><strong>Prediction Confidence:</strong> {{ prob }}%</p>
 
     {% if prediction == 1 %}
       <p class="unhealthy">⚠️ <strong>Alert:</strong> You may be at risk of heart disease.</p>
       <h3>🩺 What You Can Do:</h3>
       <ul>
-        <li>🔗 Schedule an appointment with a cardiologist.</li>
-        <li>🥗 Eat heart-healthy meals and reduce processed food.</li>
-        <li>🏃 Increase physical activity (30 mins daily).</li>
-        <li>🧘 Reduce stress through yoga or meditation.</li>
-        <li>🚭 Avoid smoking and limit alcohol intake.</li>
+        <li>Schedule a cardiologist appointment.</li>
+        <li>Eat a heart-healthy diet.</li>
+        <li>Exercise 30 mins daily.</li>
+        <li>Reduce stress with meditation or yoga.</li>
+        <li>Avoid smoking and limit alcohol intake.</li>
       </ul>
-      <div>
-        <a href="https://www.who.int/news-room/fact-sheets/detail/cardiovascular-diseases-(cvds)" target="_blank" class="btn external-link">🌐 Learn More on WHO</a>
-      </div>
+      <a href="https://www.who.int/news-room/fact-sheets/detail/cardiovascular-diseases-(cvds)" target="_blank" class="btn external-link">🌐 Learn More on WHO</a>
     {% else %}
       <p class="healthy">✅ Great! You are likely free from heart disease symptoms.</p>
-      <p>💡 <strong>Tip:</strong> Keep up with healthy habits and regular health check-ups!</p>
+      <p><strong>Tip:</strong> Keep up with healthy habits and regular checkups.</p>
       <ul>
-        <li>🍎 Maintain a balanced diet rich in fruits & vegetables.</li>
-        <li>🚶‍♂️ Stay active — aim for 150 mins/week of moderate exercise.</li>
-        <li>🩺 Don’t skip regular health screenings.</li>
-        <li>🧠 Manage stress with mindfulness or hobbies.</li>
+        <li>Maintain a balanced diet.</li>
+        <li>Stay active — 150 mins/week exercise.</li>
+        <li>Don’t skip medical checkups.</li>
+        <li>Manage stress with hobbies or mindfulness.</li>
       </ul>
-      <div>
-        <a href="https://www.cdc.gov/heartdisease/prevention.htm" target="_blank" class="btn external-link">🌐 Learn More on CDC</a>
-      </div>
+      <a href="https://www.cdc.gov/heartdisease/prevention.htm" target="_blank" class="btn external-link">🌐 Learn More on CDC</a>
     {% endif %}
 
-    <div style="margin-top: 1.5rem;">
-      <a href="{{ url_for('home') }}" class="btn">🔁 Check Another Person</a>
+    {% if shap_plot %}
+      <h3>🧠 Model Explanation (SHAP):</h3>
+      <img src="{{ url_for('static', filename=shap_plot) }}" alt="SHAP Plot">
+
+      {% if shap_explanations %}
+        <h4>
+          {% if 'OpenAI explanation failed' in shap_explanations|last %}
+            ⚠️ Fallback Explanation
+          {% else %}
+            🤖 AI-Generated Explanation
+          {% endif %}
+        </h4>
+        <ul>
+          {% for line in shap_explanations %}
+            <li>{{ line|safe }}</li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    {% endif %}
+
+    {% if natural_explanation %}
+      <h4>💬 Explanation in Simple Language:</h4>
+      <p style="max-width: 600px; margin: auto;">{{ natural_explanation }}</p>
+    {% endif %}
+
+    <div class="chat-box">
+      <h3>💬 Have Questions? Ask Me!</h3>
+      <div class="chat-log" id="chat-log"></div>
+      <div class="chat-input-area">
+        <input type="text" id="user-input" placeholder="Ask a question..." />
+        <button onclick="sendMessage()">Send</button>
+      </div>
     </div>
+    <div style="text-align: center; margin-top: 2rem;">
+  <a href="{{ url_for('home') }}" class="btn">🔁 Check Next Person</a>
+</div>
+
   </div>
 
+  <script src="{{ url_for('static', filename='js/script.js') }}"></script>
 </body>
 </html>

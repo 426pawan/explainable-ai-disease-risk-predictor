@@ -3,11 +3,38 @@ import numpy as np
 import pandas as pd
 import joblib
 import os
+from dotenv import load_dotenv
+import openai
+from shap_utils import generate_shap_plot
+
+load_dotenv()
+openai.api_key = os.getenv("OPENAI_API_KEY")
 
 app = Flask(__name__)
 
 model = joblib.load('model/best_model.pkl')
 scaler = joblib.load('model/scaler.pkl')
+
+def generate_natural_language_explanation(shap_explanations):
+    try:
+        prompt = (
+            "Explain the following SHAP feature contributions for a heart disease prediction "
+            "in a user-friendly way:\n\n" + "\n".join(shap_explanations) +
+            "\n\nMake the explanation easy to understand for a non-technical user."
+        )
+
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "You are a helpful medical assistant."},
+                {"role": "user", "content": prompt}
+            ],
+            max_tokens=150,
+            temperature=0.7,
+        )
+        return response['choices'][0]['message']['content'].strip()
+    except Exception as e:
+        return f"Could not generate natural language explanation: {e}"
 
 @app.route('/')
 def home():
@@ -16,53 +43,28 @@ def home():
 @app.route('/predict', methods=['POST'])
 def predict():
     try:
-        age = int(request.form['age'])
-        if not (1 <= age <= 120): raise ValueError("Invalid age")
+        keys = ['age', 'sex', 'cp', 'trestbps', 'chol', 'fbs',
+                'restecg', 'thalch', 'exang', 'oldpeak', 'slope', 'ca', 'thal']
+        form_data = [int(request.form[k]) if k != 'oldpeak' else float(request.form[k]) for k in keys]
+        input_df = pd.DataFrame([form_data], columns=keys)
+        scaled_input = scaler.transform(input_df)
 
-        sex = int(request.form['sex'])
-        if sex not in [0, 1]: raise ValueError("Invalid sex")
-
-        cp = int(request.form['cp'])
-        if cp not in [0, 1, 2, 3]: raise ValueError("Invalid chest pain type")
-
-        trestbps = int(request.form['trestbps'])
-        if not (80 <= trestbps <= 250): raise ValueError("Invalid blood pressure")
-
-        chol = int(request.form['chol'])
-        if not (100 <= chol <= 600): raise ValueError("Invalid cholesterol")
-
-        fbs = int(request.form['fbs'])
-        if fbs not in [0, 1]: raise ValueError("Invalid fasting blood sugar")
-
-        restecg = int(request.form['restecg'])
-        if restecg not in [0, 1]: raise ValueError("Invalid ECG")
-
-        thalch = int(request.form['thalch'])
-        if not (60 <= thalch <= 250): raise ValueError("Invalid max heart rate")
-
-        exang = int(request.form['exang'])
-        if exang not in [0, 1]: raise ValueError("Invalid angina")
-
-        oldpeak = float(request.form['oldpeak'])
-        if not (0 <= oldpeak <= 6): raise ValueError("Invalid ST depression")
-
-        slope = int(request.form['slope'])
-        if slope not in [0, 1, 2]: raise ValueError("Invalid slope")
-
-        ca = int(request.form['ca'])
-        if not (0 <= ca <= 3): raise ValueError("Invalid number of vessels")
-
-        thal = int(request.form['thal'])
-        if thal not in [1, 2, 3]: raise ValueError("Invalid thalassemia type")
-
-        input_data = pd.DataFrame([[age, sex, cp, trestbps, chol, fbs,
-                                    restecg, thalch, exang, oldpeak, slope, ca, thal]],
-                                  columns=['age', 'sex', 'cp', 'trestbps', 'chol', 'fbs',
-                                           'restecg', 'thalch', 'exang', 'oldpeak', 'slope', 'ca', 'thal'])
-
-        scaled_input = scaler.transform(input_data)
         prediction = model.predict(scaled_input)[0]
-        probability = model.predict_proba(scaled_input)[0]
+        try:
+            probability = model.predict_proba(scaled_input)[0]
+            class_index = list(model.classes_).index(prediction)
+            prob = round(probability[class_index] * 100, 2)
+        except Exception:
+            prob = "Unavailable"
+
+        try:
+            shap_plot_path, shap_explanations = generate_shap_plot(model, scaled_input, input_df.columns, prediction)
+            natural_explanation = generate_natural_language_explanation(shap_explanations)
+            shap_path_for_html = shap_plot_path.replace("\\", "/").split("static/")[-1]
+        except Exception as shap_err:
+            shap_path_for_html = None
+            shap_explanations = [f"Could not generate SHAP explanation: {shap_err}"]
+            natural_explanation = None
 
         if prediction == 1:
             result_msg = "⚠️ You may be at risk of heart disease."
@@ -78,14 +80,47 @@ def predict():
                 "🔗 <a href='https://www.heart.org/en/healthy-living' target='_blank'>Learn more</a>"
             )
 
-        return render_template('result.html',
-                               prediction=prediction,
-                               prob=round(probability[prediction] * 100, 2),
-                               result_msg=result_msg,
-                               tips=tips)
+        return render_template(
+            'result.html',
+            prediction=prediction,
+            prob=prob,
+            result_msg=result_msg,
+            tips=tips,
+            shap_plot=shap_path_for_html,
+            shap_explanations=shap_explanations,
+            natural_explanation=natural_explanation
+        )
 
     except Exception as e:
-        return f"Error occurred: {e}", 400
+        return f"Error occurred: {str(e)}", 400
+
+
+
+
+from flask import jsonify
+
+@app.route("/chat", methods=["POST"])
+def chat():
+    try:
+        user_message = request.json.get("message", "")
+        if not user_message:
+            return jsonify({"reply": "Please enter a message."})
+
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "You are a helpful AI assistant knowledgeable in heart health and medical AI predictions."},
+                {"role": "user", "content": user_message}
+            ],
+            temperature=0.7,
+            max_tokens=200,
+        )
+        reply = response['choices'][0]['message']['content'].strip()
+        return jsonify({"reply": reply})
+
+    except Exception as e:
+        return jsonify({"reply": f"Could not respond: {str(e)}"})
+
 
 if __name__ == '__main__':
     app.run(debug=True)
